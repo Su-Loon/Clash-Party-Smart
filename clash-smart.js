@@ -1068,6 +1068,11 @@ function injectRuleProviders(config) {
 
 function injectRules(config) {
   config.rules = [
+    // FIX: Bing 域名走代理（anti-ad 规则会拦截 bing 子域名，需前置）
+    `DOMAIN-SUFFIX,bing.com,${SMART.GLOBAL}`,
+    `DOMAIN-SUFFIX,msn.com,${SMART.GLOBAL}`,
+    `DOMAIN-SUFFIX,windows.com,${SMART.GLOBAL}`,
+    `DOMAIN-SUFFIX,live.com,${SMART.GLOBAL}`,
     // v5.2.3 CHG#2：广告/追踪规则改为 DIRECT（直连）
     `RULE-SET,anti-ad,DIRECT`,
     // v5.1: P0 安全 - 钓鱼域名拦截（13万条，SukkaW）
