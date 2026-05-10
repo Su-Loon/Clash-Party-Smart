@@ -3,9 +3,9 @@
 // 架构：SUB-STORE 多机场融合 + 10 Smart 区域组 + 17 业务策略组 + 373+ rule-providers 100%+ 服务覆盖
 // 完整变更历史：见 CHANGELOG.md（v4.5.5 ~ v5.2.0）
 // v5.2.3 变更摘要（2026-05-10）：
-//   ★ CHG#2：移除以下业务分组（相关规则并入 GLOBAL/GFW 组）
+//   ★ CHG#2：移除以下业务分组（相关规则并入 GLOBAL/GFW/DIRECT 组）
 //     - 工具类型分组：🔍 搜索引擎、📟 开发者服务、Ⓜ️ 微软服务、🍎 苹果服务、📥 下载更新、🛰️ BT/PT Tracker
-//     - 🛑 广告拦截 → REJECT 直接拦截（不再走分组）
+//     - 🛑 广告拦截 → DIRECT 直连（19个规则源：anti-ad/ads-all/advertising 等）
 //     - 🧑‍💼 会议协作 → GLOBAL 组
 //     - 🏦 金融支付/💰 加密货币 → GFW 组
 //     - ☁️ 云与CDN 分组保留
@@ -1068,7 +1068,8 @@ function injectRuleProviders(config) {
 
 function injectRules(config) {
   config.rules = [
-    `RULE-SET,anti-ad,REJECT`,
+    // v5.2.3 CHG#2：广告/追踪规则改为 DIRECT（直连）
+    `RULE-SET,anti-ad,DIRECT`,
     // v5.1: P0 安全 - 钓鱼域名拦截（13万条，SukkaW）
     `RULE-SET,sukka-phishing,REJECT`,
     // v5.1.6: P0 安全 - 威胁情报（Hagezi TIF：malware/cryptojacking/C2/scam/spam）
@@ -1079,18 +1080,19 @@ function injectRules(config) {
     `RULE-SET,acc-blockhttpdnsplus,REJECT`,
     `RULE-SET,acc-prerepaireasyprivacy,REJECT`,
     `RULE-SET,acc-unsupportvpn,REJECT`,
-    `GEOSITE,category-ads-all,REJECT`,
-    `RULE-SET,advertising,REJECT`,
-    `RULE-SET,advertisingmitv,REJECT`,
-    `RULE-SET,adobeactivation,REJECT`,
-    `RULE-SET,blockhttpdns,REJECT`,
-    `RULE-SET,domob,REJECT`,
-    `RULE-SET,hijacking,REJECT`,
-    `RULE-SET,jiguangtuisong,REJECT`,
-    `RULE-SET,marketing,REJECT`,
-    `RULE-SET,miuiprivacy,REJECT`,
-    `RULE-SET,privacy,REJECT`,
-    `RULE-SET,youmengchuangxiang,REJECT`,
+    // v5.2.3 CHG#2：广告追踪规则改为 DIRECT
+    `GEOSITE,category-ads-all,DIRECT`,
+    `RULE-SET,advertising,DIRECT`,
+    `RULE-SET,advertisingmitv,DIRECT`,
+    `RULE-SET,adobeactivation,DIRECT`,
+    `RULE-SET,blockhttpdns,DIRECT`,
+    `RULE-SET,domob,DIRECT`,
+    `RULE-SET,hijacking,DIRECT`,
+    `RULE-SET,jiguangtuisong,DIRECT`,
+    `RULE-SET,marketing,DIRECT`,
+    `RULE-SET,miuiprivacy,DIRECT`,
+    `RULE-SET,privacy,DIRECT`,
+    `RULE-SET,youmengchuangxiang,DIRECT`,
     // v5.2.1 FIX#19: DST-PORT,7680 必须在 GEOIP,private 之前，否则私有 IP 先匹配走 DIRECT
     'DST-PORT,7680,REJECT',
     'GEOSITE,private,DIRECT',
