@@ -314,7 +314,6 @@ function injectRuleProviders(config) {
   // ============ #26~29 搜索引擎 ============
   metaDomain('google', 'google')
   metaIpCidr('google-ip', 'google')
-  bm7('bing', 'Bing')
   bm7('googlesearch', 'GoogleSearch')
 
   // ============ #30~41 美国流媒体 ============
@@ -1068,11 +1067,6 @@ function injectRuleProviders(config) {
 
 function injectRules(config) {
   config.rules = [
-    // FIX: Bing 域名走代理（anti-ad 规则会拦截 bing 子域名，需前置）
-    `DOMAIN-SUFFIX,bing.com,${SMART.GLOBAL}`,
-    `DOMAIN-SUFFIX,msn.com,${SMART.GLOBAL}`,
-    `DOMAIN-SUFFIX,windows.com,${SMART.GLOBAL}`,
-    `DOMAIN-SUFFIX,live.com,${SMART.GLOBAL}`,
     // v5.2.3 CHG#2：广告/追踪规则改为 DIRECT（直连）
     `RULE-SET,anti-ad,DIRECT`,
     // v5.1: P0 安全 - 钓鱼域名拦截（13万条，SukkaW）
@@ -1653,7 +1647,6 @@ function injectRules(config) {
     `RULE-SET,sony,${BIZ.GAME_INTL}`,
     // v5.1.9 CLEAN#1: googlesearch/googledrive/googleearth/google/google-ip + dl.google.com/play.googleapis.com/android.clients.google.com
     //   已提升至防吞盾（FIX#14），dead rules 已清除
-    `RULE-SET,bing,${SMART.GLOBAL}`,
     `DOMAIN-SUFFIX,yahoo.com,${SMART.GLOBAL}`,
     `DOMAIN-SUFFIX,yahoo.co.jp,${SMART.GLOBAL}`,
     `DOMAIN-SUFFIX,duckduckgo.com,${SMART.GLOBAL}`,
