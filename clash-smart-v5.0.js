@@ -3,7 +3,7 @@
 // 架构：SUB-STORE 多机场融合 + 9 Smart 区域组 + 28 业务策略组 + 373+ rule-providers 100%+ 服务覆盖
 // 完整变更历史：见 CHANGELOG.md（v4.5.5 ~ v5.2.2）
 // v5.3.0 变更摘要（2026-05-10）：
-//   ★ 方案四：规则精准度全面提升
+//   ★ 规则精准度全面提升
 //   [AI 服务] 新增 20+ 条规则：
 //     - OpenAI 新入口 chatgpt.com（独立于 openai.com 的对话域名）
 //     - Anthropic 新入口 claude.ai（独立于 anthropic.com 的对话域名）
