@@ -2,6 +2,12 @@
 // 版本：v5.3.0 (2026-05-10)
 // 架构：SUB-STORE 多机场融合 + 9 Smart 区域组 + 28 业务策略组 + 373+ rule-providers 100%+ 服务覆盖
 // 完整变更历史：见 CHANGELOG.md（v4.5.5 ~ v5.2.2）
+// v5.3.1 变更摘要（2026-05-10）：
+//   ★ 新增：订阅预处理功能
+//     - 在执行原有覆写逻辑前，自动删除订阅中的 proxy-groups、rules、rule-providers 等内容
+//     - 仅保留节点数据（proxies），避免订阅自带配置干扰覆写结果
+//     - 提升脚本兼容性，适配更多订阅格式
+//
 // v5.3.0 变更摘要（2026-05-10）：
 //   ★ 规则精准度全面提升
 //   [AI 服务] 新增 20+ 条规则：
@@ -57,7 +63,7 @@
 //  版本常量
 // ================================================================
 
-const VERSION = 'v5.3.0'
+const VERSION = 'v5.3.1'
 
 // ================================================================
 //  模块 A：节点过滤（沿用 v3.1）
@@ -2348,6 +2354,15 @@ function sortProxyGroups(config) {
 
 function main(config) {
   try {
+    // ★ v5.3.1: 预处理 - 仅保留节点数据
+    if (config && typeof config === 'object' && Array.isArray(config.proxies)) {
+      console.log(`[${VERSION}] Preprocessing: cleaning subscription data, preserving ${config.proxies.length} proxies`)
+      const preservedProxies = config.proxies
+      for (const key in config) { delete config[key] }
+      config.proxies = preservedProxies
+      console.log(`[${VERSION}] Preprocessing done: only proxies retained`)
+    }
+    
     if (!config || typeof config !== 'object') return config
     if (!Array.isArray(config.proxies) || config.proxies.length === 0) return config
     console.log(`[${VERSION}] Start processing, ${config.proxies.length} proxies`)
