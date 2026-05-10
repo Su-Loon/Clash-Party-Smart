@@ -149,10 +149,10 @@ const SMART = {
 }
 
 const BIZ = {
-  AI: '🤖 AI 服务', EMAIL: '📧 邮件服务', IM: '💬 即时通讯', SOCIAL: '📱 社交媒体',
+  AI: '🤖 AI 服务', CN_AI: '🇨🇳 国内AI', EMAIL: '📧 邮件服务', IM: '💬 即时通讯', SOCIAL: '📱 社交媒体',
   CNMEDIA: '📺 国内流媒体', STREAM_SEA: '📺 东南亚流媒体',
   STREAM_US: '🇺🇸 美国流媒体', STREAM_HK: '🇭🇰 香港流媒体', STREAM_TW: '🇹🇼 台湾流媒体',
-  STREAM_JP: '🇯🇵 日韩流媒体', STREAM_EU: '🇪🇺 欧洲流媒体',
+  STREAM_JP: '🇯🇵 日本流媒体', STREAM_KR: '🇰🇷 韩国流媒体', STREAM_EU: '🇪🇺 欧洲流媒体',
   GAME_CN: '🕹️ 国内游戏', GAME_INTL: '🎮 国外游戏',
   CLOUD_CDN: '☁️ 云与CDN',
   CN_SITE: '🏠 国内网站',
@@ -161,7 +161,8 @@ const BIZ = {
 }
 
 const DISABLED_BIZ_GROUPS = new Set([
-  BIZ.CNMEDIA, BIZ.STREAM_SEA, BIZ.STREAM_US, BIZ.STREAM_HK, BIZ.STREAM_TW, BIZ.STREAM_JP, BIZ.STREAM_EU,
+  // v5.2.4: 启用所有业务组
+  // BIZ.CNMEDIA, BIZ.STREAM_SEA, BIZ.STREAM_US, BIZ.STREAM_HK, BIZ.STREAM_TW, BIZ.STREAM_JP, BIZ.STREAM_KR, BIZ.STREAM_EU,
 ])
 
 const STANDARD_PROXIES = [SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.APAC, SMART.US, SMART.EU, SMART.AMERICAS, SMART.AFRICA, 'DIRECT']
@@ -198,6 +199,7 @@ function upsertSmartGroup(config, name, proxies) {
 function injectBusinessGroups(config) {
   var groups = [
     { name: BIZ.AI, type: 'select', proxies: STANDARD_PROXIES.slice() },
+    { name: BIZ.CN_AI, type: 'select', proxies: DIRECT_FIRST_PROXIES.slice() },
     { name: BIZ.EMAIL, type: 'select', proxies: STANDARD_PROXIES.slice() },
     { name: BIZ.IM, type: 'select', proxies: STANDARD_PROXIES.slice() },
     { name: BIZ.SOCIAL, type: 'select', proxies: STANDARD_PROXIES.slice() },
@@ -207,6 +209,7 @@ function injectBusinessGroups(config) {
     { name: BIZ.STREAM_HK, type: 'select', proxies: STANDARD_PROXIES.slice() },
     { name: BIZ.STREAM_TW, type: 'select', proxies: STANDARD_PROXIES.slice() },
     { name: BIZ.STREAM_JP, type: 'select', proxies: STANDARD_PROXIES.slice() },
+    { name: BIZ.STREAM_KR, type: 'select', proxies: STANDARD_PROXIES.slice() },
     { name: BIZ.STREAM_EU, type: 'select', proxies: STANDARD_PROXIES.slice() },
     { name: BIZ.GAME_CN, type: 'select', proxies: DIRECT_FIRST_PROXIES.slice() },
     { name: BIZ.GAME_INTL, type: 'select', proxies: STANDARD_PROXIES.slice() },
@@ -1176,6 +1179,29 @@ function injectRules(config) {
     `DOMAIN-SUFFIX,modal.run,${BIZ.AI}`,
     `DOMAIN-SUFFIX,runpod.io,${BIZ.AI}`,
     `RULE-SET,civitai,${BIZ.AI}`,
+    // v5.2.4: 中国大陆 AI 服务（可直连）
+    `DOMAIN-SUFFIX,baidu.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,wenxin.baidu.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,yiyan.baidu.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,alice.aliyun.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,tongyi.aliyun.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,qwen.ai,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,dashscope.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,iflytek.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,xfyun.cn,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,tiangong.cn,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,minimax.chat,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,minimaxi.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,moonshot.cn,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,maas.minimax.io,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,volcengine.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,byteark.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,coze.cn,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,coze.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,doubao.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,houyi.baidu.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,spark.xfyun.cn,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,sparkaipush.obs.cn-south-1.myhuaweicloud.com,${BIZ.CN_AI}`,
     // ════════════════════════════════════════════════════════════════
     //  v5.1.8 FIX#14-P0：Google 子服务防吞盾
     //  szkane AiDomain.list 含 Google 宽域名（因 Gemini/Bard），导致 Google 全系误走 AI 代理
@@ -1526,22 +1552,22 @@ function injectRules(config) {
     `DOMAIN-SUFFIX,radiko.jp,${BIZ.STREAM_JP}`,
     `DOMAIN-SUFFIX,lemino.docomo.ne.jp,${BIZ.STREAM_JP}`,
     `DOMAIN-SUFFIX,wowow.co.jp,${BIZ.STREAM_JP}`,
-    `DOMAIN-SUFFIX,wavve.com,${BIZ.STREAM_JP}`,
-    `DOMAIN-SUFFIX,tving.com,${BIZ.STREAM_JP}`,
-    `DOMAIN-SUFFIX,watcha.com,${BIZ.STREAM_JP}`,
-    `DOMAIN-SUFFIX,coupangplay.com,${BIZ.STREAM_JP}`,
-    `DOMAIN-SUFFIX,sbs.co.kr,${BIZ.STREAM_JP}`,
-    `DOMAIN-SUFFIX,kbs.co.kr,${BIZ.STREAM_JP}`,
-    `DOMAIN-SUFFIX,mbc.co.kr,${BIZ.STREAM_JP}`,
-    `DOMAIN-SUFFIX,jtbc.co.kr,${BIZ.STREAM_JP}`,
-    `DOMAIN-SUFFIX,tvn.cjenm.com,${BIZ.STREAM_JP}`,
-    `DOMAIN-SUFFIX,afreecatv.com,${BIZ.STREAM_JP}`,
-    `DOMAIN-SUFFIX,tv.naver.com,${BIZ.STREAM_JP}`,
-    `DOMAIN-SUFFIX,now.naver.com,${BIZ.STREAM_JP}`,
-    `DOMAIN-SUFFIX,vod.naver.com,${BIZ.STREAM_JP}`,
-    `DOMAIN-SUFFIX,navertv.naver.com,${BIZ.STREAM_JP}`,
-    `DOMAIN-SUFFIX,kakaotv.daum.net,${BIZ.STREAM_JP}`,
-    `DOMAIN-SUFFIX,navercorp.com,${BIZ.STREAM_JP}`,
+    `DOMAIN-SUFFIX,wavve.com,${BIZ.STREAM_KR}`,
+    `DOMAIN-SUFFIX,tving.com,${BIZ.STREAM_KR}`,
+    `DOMAIN-SUFFIX,watcha.com,${BIZ.STREAM_KR}`,
+    `DOMAIN-SUFFIX,coupangplay.com,${BIZ.STREAM_KR}`,
+    `DOMAIN-SUFFIX,sbs.co.kr,${BIZ.STREAM_KR}`,
+    `DOMAIN-SUFFIX,kbs.co.kr,${BIZ.STREAM_KR}`,
+    `DOMAIN-SUFFIX,mbc.co.kr,${BIZ.STREAM_KR}`,
+    `DOMAIN-SUFFIX,jtbc.co.kr,${BIZ.STREAM_KR}`,
+    `DOMAIN-SUFFIX,tvn.cjenm.com,${BIZ.STREAM_KR}`,
+    `DOMAIN-SUFFIX,afreecatv.com,${BIZ.STREAM_KR}`,
+    `DOMAIN-SUFFIX,tv.naver.com,${BIZ.STREAM_KR}`,
+    `DOMAIN-SUFFIX,now.naver.com,${BIZ.STREAM_KR}`,
+    `DOMAIN-SUFFIX,vod.naver.com,${BIZ.STREAM_KR}`,
+    `DOMAIN-SUFFIX,navertv.naver.com,${BIZ.STREAM_KR}`,
+    `DOMAIN-SUFFIX,kakaotv.daum.net,${BIZ.STREAM_KR}`,
+    `DOMAIN-SUFFIX,navercorp.com,${BIZ.STREAM_KR}`,
     `RULE-SET,dmm,${BIZ.STREAM_JP}`,
     `RULE-SET,tver,${BIZ.STREAM_JP}`,
     `RULE-SET,niconico,${BIZ.STREAM_JP}`,
