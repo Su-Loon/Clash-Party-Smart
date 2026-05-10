@@ -1,7 +1,13 @@
 // Clash Smart 内核覆写脚本 - SUB-STORE 多机场精细分流版
-// 版本：v5.2.1 (2026-04-09)
-// 架构：SUB-STORE 多机场融合 + 9 Smart 区域组 + 28 业务策略组 + 373+ rule-providers 100%+ 服务覆盖
+// 版本：v5.2.2 (2026-05-10)
+// 架构：SUB-STORE 多机场融合 + 10 Smart 区域组 + 28 业务策略组 + 373+ rule-providers 100%+ 服务覆盖
 // 完整变更历史：见 CHANGELOG.md（v4.5.5 ~ v5.2.0）
+// v5.2.2 变更摘要（2026-05-10）：
+//   ★ CHG#1：将 🇯🇵 日韩节点 拆分为 🇯🇵 日本节点 和 🇰🇷 韩国节点 独立组
+//     - JPKR → JP + KR，各自独立分流
+//     - 日本组 fallback：JP → KR → 日韩合并 → 亚太 → 全节点
+//     - 韩国组 fallback：KR → JP → 日韩合并 → 亚太 → 全节点
+//     - STANDARD_PROXIES / DIRECT_FIRST_PROXIES / SEA_PROXIES 同步更新
 // v5.2.2 变更摘要（2026-04-13）：
 //   ★ FIX#20-P2：PI.ai（inflection.ai / pi.ai）从 🤖 AI 服务 移至 🚫 受限网站（GFW）
 //     - PI.ai 在中国被 GFW 封锁，应归入受限网站组统一管理
@@ -31,7 +37,7 @@
 //  版本常量
 // ================================================================
 
-const VERSION = 'v5.2.1'
+const VERSION = 'v5.2.2'
 
 // ================================================================
 //  模块 A：节点过滤（沿用 v3.1）
@@ -131,7 +137,7 @@ function classifyAllNodes(proxies) {
 
 const SMART = {
   GLOBAL: '🌍 全球节点', HK: '🇭🇰 香港节点', TW: '🇹🇼 台湾节点',
-  JPKR: '🇯🇵 日韩节点', APAC: '🌏 亚太节点', US: '🇺🇸 美国节点',
+  JP: '🇯🇵 日本节点', KR: '🇰🇷 韩国节点', APAC: '🌏 亚太节点', US: '🇺🇸 美国节点',
   EU: '🇪🇺 欧洲节点', AMERICAS: '🌎 美洲节点', AFRICA: '🌍 非洲节点',
 }
 
@@ -155,10 +161,10 @@ const DISABLED_BIZ_GROUPS = new Set([
   BIZ.SEARCH, BIZ.DEV, BIZ.MS, BIZ.APPLE, BIZ.DOWNLOAD, BIZ.TRACKER, BIZ.AD,
 ])
 
-const STANDARD_PROXIES = [SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JPKR, SMART.APAC, SMART.US, SMART.EU, SMART.AMERICAS, SMART.AFRICA, 'DIRECT']
-const DIRECT_FIRST_PROXIES = ['DIRECT', SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JPKR, SMART.APAC, SMART.US, SMART.EU, SMART.AMERICAS, SMART.AFRICA]
+const STANDARD_PROXIES = [SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.APAC, SMART.US, SMART.EU, SMART.AMERICAS, SMART.AFRICA, 'DIRECT']
+const DIRECT_FIRST_PROXIES = ['DIRECT', SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.APAC, SMART.US, SMART.EU, SMART.AMERICAS, SMART.AFRICA]
 const TRACKER_PROXIES = ['REJECT', 'DIRECT', SMART.GLOBAL, SMART.HK, SMART.APAC]
-const SEA_PROXIES = [SMART.APAC, SMART.GLOBAL, SMART.HK, SMART.JPKR, SMART.US, 'DIRECT']
+const SEA_PROXIES = [SMART.APAC, SMART.GLOBAL, SMART.HK, SMART.JP, SMART.KR, SMART.US, 'DIRECT']
 
 // v5.1.2: GeoRouting 区域列表（module-level，供 providers + rules 共用）
 // ★ FIX#1: Asia_China 从 INTL 循环剥离，单独映射 CN_SITE（v5.1.1 误将中国域名/IP 路由到国外网站）
@@ -2266,7 +2272,12 @@ function main(config) {
     upsertSmartGroup(config, SMART.GLOBAL, c.ALL)
     upsertSmartGroup(config, SMART.HK, c.HK.length > 0 ? c.HK : apacNodes.length > 0 ? apacNodes : c.ALL)
     upsertSmartGroup(config, SMART.TW, c.TW.length > 0 ? c.TW : apacNodes.length > 0 ? apacNodes : c.ALL)
-    upsertSmartGroup(config, SMART.JPKR, jpkrNodes.length > 0 ? jpkrNodes : apacNodes.length > 0 ? apacNodes : c.ALL)
+    if (c.JP.length > 0) {
+      upsertSmartGroup(config, SMART.JP, c.JP.length > 0 ? c.JP : c.KR.length > 0 ? c.KR : jpkrNodes.length > 0 ? jpkrNodes : apacNodes.length > 0 ? apacNodes : c.ALL)
+    }
+    if (c.KR.length > 0) {
+      upsertSmartGroup(config, SMART.KR, c.KR.length > 0 ? c.KR : c.JP.length > 0 ? c.JP : jpkrNodes.length > 0 ? jpkrNodes : apacNodes.length > 0 ? apacNodes : c.ALL)
+    }
     upsertSmartGroup(config, SMART.APAC, apacNodes.length > 0 ? apacNodes : c.ALL)
     upsertSmartGroup(config, SMART.US, c.US.length > 0 ? c.US : americasNodes.length > 0 ? americasNodes : c.ALL)
     // v5.2.1: 空区域不建组，避免 fallback 到 c.ALL 导致全节点塞入
