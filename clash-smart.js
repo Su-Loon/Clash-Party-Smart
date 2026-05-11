@@ -1190,6 +1190,8 @@ function injectRules(config) {
     `DOMAIN-SUFFIX,alice.aliyun.com,${BIZ.CN_AI}`,
     `DOMAIN-SUFFIX,tongyi.aliyun.com,${BIZ.CN_AI}`,
     `DOMAIN-SUFFIX,qwen.ai,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,trae.cn,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,trae.com.cn,${BIZ.CN_AI}`,
     `DOMAIN-SUFFIX,dashscope.com,${BIZ.CN_AI}`,
     `DOMAIN-SUFFIX,iflytek.com,${BIZ.CN_AI}`,
     `DOMAIN-SUFFIX,xfyun.cn,${BIZ.CN_AI}`,
