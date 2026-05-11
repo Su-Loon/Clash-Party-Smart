@@ -1208,7 +1208,6 @@ function injectRules(config) {
     // v5.2.4: 新增国产AI工具（TRAE/WorkBuddy/QClaw/CodeBuddy等）
     `DOMAIN-SUFFIX,trae.cn,${BIZ.CN_AI}`,
     `DOMAIN-SUFFIX,trae.com.cn,${BIZ.CN_AI}`,
-    `DOMAIN-SUFFIX,volcengine.com,${BIZ.CN_AI}`,
     `DOMAIN-SUFFIX,bytedance.com,${BIZ.CN_AI}`,
     `DOMAIN-SUFFIX,bytedance.net,${BIZ.CN_AI}`,
     `DOMAIN-SUFFIX,codebuddy.cn,${BIZ.CN_AI}`,
