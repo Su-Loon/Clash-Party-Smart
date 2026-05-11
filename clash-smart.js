@@ -1098,6 +1098,9 @@ function injectRules(config) {
     // v5.2.1 FIX#19: DST-PORT,7680 必须在 GEOIP,private 之前，否则私有 IP 先匹配走 DIRECT
     'DST-PORT,7680,REJECT',
     'GEOSITE,private,DIRECT',
+    // v5.2.4 FIX: fake-ip 范围必须在 GEOIP,private 之前，否则被误识别为私有IP走DIRECT
+    'IP-CIDR,198.18.0.0/15,REJECT',
+    'IP-CIDR,198.19.0.0/16,REJECT',
     'GEOIP,private,DIRECT,no-resolve',
     'IP-CIDR,172.90.1.130/32,DIRECT,no-resolve',
     'PROCESS-NAME,WorkPro.exe,DIRECT',
