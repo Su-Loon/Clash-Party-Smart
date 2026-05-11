@@ -1205,6 +1205,18 @@ function injectRules(config) {
     `DOMAIN-SUFFIX,houyi.baidu.com,${BIZ.CN_AI}`,
     `DOMAIN-SUFFIX,spark.xfyun.cn,${BIZ.CN_AI}`,
     `DOMAIN-SUFFIX,sparkaipush.obs.cn-south-1.myhuaweicloud.com,${BIZ.CN_AI}`,
+    // v5.2.4: 新增国产AI工具（TRAE/WorkBuddy/QClaw/CodeBuddy等）
+    `DOMAIN-SUFFIX,trae.cn,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,trae.com.cn,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,volcengine.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,bytedance.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,bytedance.net,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,codebuddy.cn,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,codebuddy.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,claw.guanjia.qq.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,openclaw.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,kunlun.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,qingtime.cn,${BIZ.CN_AI}`,
     // ════════════════════════════════════════════════════════════════
     //  v5.1.8 FIX#14-P0：Google 子服务防吞盾
     //  szkane AiDomain.list 含 Google 宽域名（因 Gemini/Bard），导致 Google 全系误走 AI 代理
