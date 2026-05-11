@@ -1213,6 +1213,8 @@ function injectRules(config) {
     `DOMAIN-SUFFIX,mchost.guru,${BIZ.CN_AI}`,
     `DOMAIN-SUFFIX,zjjieapi.com,${BIZ.CN_AI}`,
     `DOMAIN-SUFFIX,ibytedapm.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,snssdk.com,${BIZ.CN_AI}`,
+    `DOMAIN-SUFFIX,bytedanceapi.com,${BIZ.CN_AI}`,
     `DOMAIN-SUFFIX,codebuddy.cn,${BIZ.CN_AI}`,
     `DOMAIN-SUFFIX,codebuddy.com,${BIZ.CN_AI}`,
     `DOMAIN-SUFFIX,claw.guanjia.qq.com,${BIZ.CN_AI}`,
