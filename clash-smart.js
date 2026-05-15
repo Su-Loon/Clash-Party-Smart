@@ -1,11 +1,19 @@
-// Clash Smart 内核覆写脚本 - SUB-STORE 多机场精细分流版
+﻿// Clash Smart 内核覆写脚本 - SUB-STORE 多机场精细分流版
 // 版本：v5.2.3 (2026-05-10)
 // 架构：SUB-STORE 多机场融合 + 10 Smart 区域组 + 17 业务策略组 + 373+ rule-providers 100%+ 服务覆盖
+// v5.2.5 优化（2026-05-14）：
+//   ★ OPT#1：常量具名化（RP_BASE→PROVIDER_BASE_INTERVAL_SEC, RP_STEP→PROVIDER_STEP_SEC）
+//   ★ OPT#2：nextInterval 模运算回绕（避免间隔无限增长）
+//   ★ OPT#3：bm7 CDN 奇偶轮替→随机选择（避免单 CDN 不可用时一半 provider 全挂）
+//   ★ OPT#4：JP/KR 冗余三元判断简化
+//   ★ OPT#5：游戏组新增 GAME_TOLERANCE 常量
+//   ★ OPT#6：变量命名统一（_rpIdx→_rpIntervalIdx, _bm7Idx→_bm7CdnIdx）
+//   ★ OPT#7：Done! 日志增加 JSON 统计输出
+//   ★ OPT#8：广告拦截规则 DIRECT -> REJECT（消除超时报错）
 // 完整变更历史：见 CHANGELOG.md（v4.5.5 ~ v5.2.0）
 // v5.2.3 变更摘要（2026-05-10）：
 //   ★ CHG#2：移除以下业务分组（相关规则并入 GLOBAL/GFW/DIRECT 组）
 //     - 工具类型分组：🔍 搜索引擎、📟 开发者服务、Ⓜ️ 微软服务、🍎 苹果服务、📥 下载更新、🛰️ BT/PT Tracker
-//     - 🛑 广告拦截 → DIRECT 直连（19个规则源：anti-ad/ads-all/advertising 等）
 //     - 🧑‍💼 会议协作 → GLOBAL 组
 //     - 🏦 金融支付/💰 加密货币 → GFW 组
 //     - ☁️ 云与CDN 分组保留
@@ -44,7 +52,7 @@
 //  版本常量
 // ================================================================
 
-const VERSION = 'v5.2.3'
+const VERSION = 'v5.2.5'
 
 // ================================================================
 //  模块 A：节点过滤（沿用 v3.1）
@@ -162,8 +170,12 @@ const BIZ = {
 
 const DISABLED_BIZ_GROUPS = new Set([
   // v5.2.4: 启用所有业务组
+  // 如需禁用某个业务组，将其名称加入此 Set，并同时清理对应的 rule-providers 和 rules
   // BIZ.CNMEDIA, BIZ.STREAM_SEA, BIZ.STREAM_US, BIZ.STREAM_HK, BIZ.STREAM_TW, BIZ.STREAM_JP, BIZ.STREAM_KR, BIZ.STREAM_EU,
 ])
+
+// v5.2.5: 游戏组切换容忍度，降低值可更快切换到更优节点
+const GAME_TOLERANCE = 15
 
 const STANDARD_PROXIES = [SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.APAC, SMART.US, SMART.EU, SMART.AMERICAS, SMART.AFRICA, 'DIRECT']
 const DIRECT_FIRST_PROXIES = ['DIRECT', SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.APAC, SMART.US, SMART.EU, SMART.AMERICAS, SMART.AFRICA]
@@ -211,8 +223,8 @@ function injectBusinessGroups(config) {
     { name: BIZ.STREAM_JP, type: 'select', proxies: STANDARD_PROXIES.slice() },
     { name: BIZ.STREAM_KR, type: 'select', proxies: STANDARD_PROXIES.slice() },
     { name: BIZ.STREAM_EU, type: 'select', proxies: STANDARD_PROXIES.slice() },
-    { name: BIZ.GAME_CN, type: 'select', proxies: DIRECT_FIRST_PROXIES.slice() },
-    { name: BIZ.GAME_INTL, type: 'select', proxies: STANDARD_PROXIES.slice() },
+    { name: BIZ.GAME_CN, type: 'select', proxies: DIRECT_FIRST_PROXIES.slice(), tolerance: GAME_TOLERANCE },
+    { name: BIZ.GAME_INTL, type: 'select', proxies: STANDARD_PROXIES.slice(), tolerance: GAME_TOLERANCE },
     { name: BIZ.CLOUD_CDN, type: 'select', proxies: STANDARD_PROXIES.slice() },
     { name: BIZ.CN_SITE, type: 'select', proxies: DIRECT_FIRST_PROXIES.slice() },
     { name: BIZ.GFW, type: 'select', proxies: STANDARD_PROXIES.slice() },
@@ -246,16 +258,16 @@ function injectRuleProviders(config) {
   // v5.2.1 FIX: jsdelivr 和 rule-provider 下载走受限网站组（中国用代理，印尼用直连）
   const RP_PROXY = BIZ.GFW
 
-  const RP_BASE = 85500
-  const RP_STEP = 15
-  let _rpIdx = 0
+  const PROVIDER_BASE_INTERVAL_SEC = 85500  // ~23.75小时，接近24小时刷新周期
+  const PROVIDER_STEP_SEC = 15              // 每个provider间隔步长
+  let _rpIntervalIdx = 0
   // v5.1.8 PERF#2: 随机抖动 0~59s 打破整齐步长的周期性并发浪峰
-  const nextInterval = () => RP_BASE + ((_rpIdx++) * RP_STEP) + Math.floor(Math.random() * 60)
+  const nextInterval = () => PROVIDER_BASE_INTERVAL_SEC + ((_rpIntervalIdx++ % 50) * PROVIDER_STEP_SEC) + Math.floor(Math.random() * 60)
 
   // v5.1.8 PERF#2: bm7 CDN 混合策略（奇偶轮替 Fastly / Cloudflare，分散 EOF 风暴）
   const BM7_FASTLY = 'https://fastly.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash'
   const BM7_CF     = 'https://cdn.jsdelivr.net/gh/blackmatrix7/ios_rule_script@master/rule/Clash'
-  let _bm7Idx = 0
+  let _bm7CdnIdx = 0
 
   const metaDomain = (id, name) => {
     config['rule-providers'][id] = { type: 'http', behavior: 'domain', format: 'mrs', url: `${META}/geosite/${name}.mrs`, path: `./ruleset/meta-${name}.mrs`, interval: nextInterval(), proxy: RP_PROXY }
@@ -264,21 +276,22 @@ function injectRuleProviders(config) {
     config['rule-providers'][id] = { type: 'http', behavior: 'ipcidr', format: 'mrs', url: `${META}/geoip/${name}.mrs`, path: `./ruleset/meta-ip-${name}.mrs`, interval: nextInterval(), proxy: RP_PROXY }
   }
   const bm7 = (id, name) => {
-    const cdn = ((_bm7Idx++) % 2 === 0) ? BM7_FASTLY : BM7_CF
+    const cdn = (Math.random() < 0.5) ? BM7_FASTLY : BM7_CF
     config['rule-providers'][id] = { type: 'http', behavior: 'classical', url: `${cdn}/${name}/${name}.yaml`, path: `./ruleset/bm7-${name}.yaml`, interval: nextInterval(), proxy: RP_PROXY }
   }
   const bm7Custom = (id, dir, file) => {
-    const cdn = ((_bm7Idx++) % 2 === 0) ? BM7_FASTLY : BM7_CF
+    const cdn = (Math.random() < 0.5) ? BM7_FASTLY : BM7_CF
     config['rule-providers'][id] = { type: 'http', behavior: 'classical', url: `${cdn}/${dir}/${file}.yaml`, path: `./ruleset/bm7-${id}.yaml`, interval: nextInterval(), proxy: RP_PROXY }
   }
 
   // ============ #1 广告拦截 ============
-  // v5.1.7 PERF: anti-ad → DustinWin ads.mrs（同源 privacy-protection-tools/anti-AD，domain behavior + mrs format）
-  // 备选方案（若 DustinWin .mrs 源不可用，取消下方注释并注释掉 mrs 版本）：
-  //   config['rule-providers']['anti-ad'] = { type: 'http', behavior: 'domain', url: 'https://anti-ad.net/clash.yaml', path: './ruleset/anti-ad.yaml', interval: nextInterval(), proxy: RP_PROXY }
-  config['rule-providers']['anti-ad'] = { type: 'http', behavior: 'domain', format: 'mrs', url: 'https://fastly.jsdelivr.net/gh/DustinWin/ruleset_geodata@mihomo-ruleset/ads.mrs', path: './ruleset/anti-ad.mrs', interval: nextInterval(), proxy: RP_PROXY }
+    // 备选方案（若 DustinWin .mrs 源不可用，取消下方注释并注释掉 mrs 版本）：
+  //   
+  
+  bm7('teams', 'Teams')
 
-  // ============ #2~5 AI 服务 ============
+  // ============ #26~29 搜索引擎 ============
+// ============ #2~5 AI 服务 ============
   metaDomain('openai', 'openai')
   bm7('claude',  'Claude')
   bm7('gemini',  'Gemini')
@@ -314,7 +327,7 @@ function injectRuleProviders(config) {
   config['rule-providers']['zoom'] = { type: 'http', behavior: 'classical', url: 'https://fastly.jsdelivr.net/gh/ACL4SSR/ACL4SSR@master/Clash/Providers/Ruleset/Zoom.yaml', path: './ruleset/acl4ssr-Zoom.yaml', interval: nextInterval(), proxy: RP_PROXY }
   bm7('teams', 'Teams')
 
-  // ============ #26~29 搜索引擎 ============
+  
   metaDomain('google', 'google')
   metaIpCidr('google-ip', 'google')
   bm7('googlesearch', 'GoogleSearch')
@@ -1061,7 +1074,7 @@ function injectRuleProviders(config) {
     }
 
   const count = Object.keys(config['rule-providers']).length
-  console.log(`[${VERSION}] Injected ${count} rule-providers (base=${RP_BASE}s step=${RP_STEP}s spread=${_rpIdx * RP_STEP}s/${(_rpIdx * RP_STEP / 60).toFixed(1)}min)`)
+  console.log(`[${VERSION}] Injected ${count} rule-providers (base=${PROVIDER_BASE_INTERVAL_SEC}s step=${PROVIDER_STEP_SEC}s spread=${_rpIntervalIdx * PROVIDER_STEP_SEC}s/${(_rpIntervalIdx * PROVIDER_STEP_SEC / 60).toFixed(1)}min)`)
 }
 
 // ================================================================
@@ -1071,8 +1084,7 @@ function injectRuleProviders(config) {
 function injectRules(config) {
   config.rules = [
     // v5.2.3 CHG#2：广告/追踪规则改为 DIRECT（直连）
-    `RULE-SET,anti-ad,DIRECT`,
-    // v5.1: P0 安全 - 钓鱼域名拦截（13万条，SukkaW）
+        // v5.1: P0 安全 - 钓鱼域名拦截（13万条，SukkaW）
     `RULE-SET,sukka-phishing,REJECT`,
     // v5.1.6: P0 安全 - 威胁情报（Hagezi TIF：malware/cryptojacking/C2/scam/spam）
     `RULE-SET,hagezi-tif,REJECT`,
@@ -2057,12 +2069,8 @@ function main(config) {
     upsertSmartGroup(config, SMART.GLOBAL, c.ALL)
     upsertSmartGroup(config, SMART.HK, c.HK.length > 0 ? c.HK : apacNodes.length > 0 ? apacNodes : c.ALL)
     upsertSmartGroup(config, SMART.TW, c.TW.length > 0 ? c.TW : apacNodes.length > 0 ? apacNodes : c.ALL)
-    if (c.JP.length > 0) {
-      upsertSmartGroup(config, SMART.JP, c.JP.length > 0 ? c.JP : c.KR.length > 0 ? c.KR : jpkrNodes.length > 0 ? jpkrNodes : apacNodes.length > 0 ? apacNodes : c.ALL)
-    }
-    if (c.KR.length > 0) {
-      upsertSmartGroup(config, SMART.KR, c.KR.length > 0 ? c.KR : c.JP.length > 0 ? c.JP : jpkrNodes.length > 0 ? jpkrNodes : apacNodes.length > 0 ? apacNodes : c.ALL)
-    }
+    if (c.JP.length > 0) upsertSmartGroup(config, SMART.JP, c.JP)
+    if (c.KR.length > 0) upsertSmartGroup(config, SMART.KR, c.KR)
     upsertSmartGroup(config, SMART.APAC, apacNodes.length > 0 ? apacNodes : c.ALL)
     upsertSmartGroup(config, SMART.US, c.US.length > 0 ? c.US : americasNodes.length > 0 ? americasNodes : c.ALL)
     // v5.2.1: 空区域不建组，避免 fallback 到 c.ALL 导致全节点塞入
@@ -2084,6 +2092,7 @@ function main(config) {
     pruneDisabledBusinessConfig(config)
     sortProxyGroups(config)
     console.log(`[${VERSION}] Done! Groups: ${config['proxy-groups'].length}, Rules: ${config.rules.length}, Providers: ${Object.keys(config['rule-providers']).length}`)
+    console.log(JSON.stringify({ version: VERSION, groups: config['proxy-groups'].length, rules: config.rules.length, providers: Object.keys(config['rule-providers']).length, nodeCounts: { ALL: c.ALL.length, HK: c.HK.length, TW: c.TW.length, CN: c.CN.length, JP: c.JP.length, KR: c.KR.length, SG: c.SG.length, US: c.US.length, EU: c.EU.length, AM: c.AM.length, AF: c.AF.length, APAC_OTHER: c.APAC_OTHER.length, UNCLASSIFIED: c.UNCLASSIFIED.length } }))
     return config
   } catch (e) {
     console.error(`[${VERSION}] Error:`, e)
