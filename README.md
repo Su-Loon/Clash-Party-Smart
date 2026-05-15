@@ -4,7 +4,7 @@
 
 ## 版本信息
 
-- **当前版本**: v5.2.5
+- **当前版本**: v5.2.6
 - **更新日期**: 2026-05-15
 
 ## 功能特性
@@ -30,7 +30,7 @@
 | 🇯🇵 日本节点 | 日本节点 | JP → KR → JPKR → APAC → GLOBAL → DIRECT |
 | 🇰🇷 韩国节点 | 韩国节点 | KR → JP → JPKR → APAC → GLOBAL → DIRECT |
 | 🌏 亚太节点 | 亚太地区节点 | APAC → GLOBAL → DIRECT |
-| 🇺🇸 美国节点 | 美国节点 | US → AMERICAS → GLOBAL → DIRECT |
+| 🇺🇸 美国节点 | 美国节点 | 仅美国节点（无 fallback） |
 | 🇪🇺 欧洲节点 | 欧洲节点 | EU → GLOBAL → DIRECT |
 | 🌎 美洲节点 | 美洲节点 | AMERICAS → GLOBAL → DIRECT |
 | 🌍 非洲节点 | 非洲节点 | AFRICA → GLOBAL → DIRECT |
@@ -117,6 +117,11 @@
 7. 默认兜底 → FINAL
 
 ## 更新日志
+
+### v5.2.6 (2026-05-15)
+- 修复 US 分组误匹配问题（移除歧义关键词：圣地亚哥、san、sea）
+- US 组移除 fallback 机制（没有美国节点时不再降级到美洲/全节点组）
+- 避免智利圣地亚哥、东南亚等节点误入美国分组
 
 ### v5.2.5 (2026-05-15)
 - 常量具名化（RP_BASE/RP_STEP → PROVIDER_BASE_INTERVAL_SEC/PROVIDER_STEP_SEC）
