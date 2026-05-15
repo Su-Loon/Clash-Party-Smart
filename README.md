@@ -4,12 +4,12 @@
 
 ## 版本信息
 
-- **当前版本**: v5.2.7
+- **当前版本**: v5.2.8
 - **更新日期**: 2026-05-15
 
 ## 功能特性
 
-- 11 个 Smart 区域节点组
+- 12 个 Smart 区域节点组
 - 20 个业务策略组
 - 373+ rule-providers 服务覆盖
 - SUB-STORE 多机场融合支持
@@ -24,17 +24,18 @@
 
 | 分组 | 用途 | Fallback 顺序 |
 |------|------|--------------|
-| 🌍 全球节点 | 所有节点 | GLOBAL → DIRECT |
+| 🌍 全球节点 | 所有节点（最终 fallback） | GLOBAL → DIRECT |
 | 🇭🇰 香港节点 | 香港节点 | HK → APAC → GLOBAL → DIRECT |
 | 🇹🇼 台湾节点 | 台湾节点 | TW → APAC → GLOBAL → DIRECT |
 | 🇯🇵 日本节点 | 日本节点 | JP → KR → JPKR → APAC → GLOBAL → DIRECT |
 | 🇰🇷 韩国节点 | 韩国节点 | KR → JP → JPKR → APAC → GLOBAL → DIRECT |
-| 🌏 亚太节点 | 亚太地区节点 | APAC → GLOBAL → DIRECT |
+| 🌏 亚太节点 | 亚太地区节点（排除已分入地区组的节点） | APAC → GLOBAL → DIRECT |
 | 🇸🇬 新加坡节点 | 新加坡节点 | 仅新加坡节点（无 fallback） |
 | 🇺🇸 美国节点 | 美国节点 | 仅美国节点（无 fallback） |
-| 🇪🇺 欧洲节点 | 欧洲节点 | EU → GLOBAL → DIRECT |
-| 🌎 美洲节点 | 美洲节点 | AMERICAS → GLOBAL → DIRECT |
-| 🌍 非洲节点 | 非洲节点 | AFRICA → GLOBAL → DIRECT |
+| 🇪🇺 欧洲节点 | 欧洲节点（排除已分入地区组的节点） | EU → GLOBAL → DIRECT |
+| 🌎 美洲节点 | 美洲节点（排除已分入地区组的节点） | AMERICAS → GLOBAL → DIRECT |
+| 🌍 非洲节点 | 非洲节点（排除已分入地区组的节点） | AFRICA → GLOBAL → DIRECT |
+| ❄️ 冷门节点 | 未被任何组分配的节点 | COLD → GLOBAL → DIRECT |
 
 ### 业务策略组
 
@@ -120,6 +121,12 @@
 7. 默认兜底 → FINAL
 
 ## 更新日志
+
+### v5.2.8 (2026-05-15)
+- 新增 ❄️ 冷门节点组（未被任何组分配的节点）
+- 节点去重机制：地区组(HK/TW/JP/KR/SG/US)节点不再出现在大区组(APAC/AMERICAS/EU/AF)
+- GLOBAL 组始终包含所有节点作为最终 fallback
+- STANDARD_PROXIES / DIRECT_FIRST_PROXIES / SEA_PROXIES 加入 COLD
 
 ### v5.2.7 (2026-05-15)
 - 新增 🇸🇬 新加坡独立 Smart 区域组

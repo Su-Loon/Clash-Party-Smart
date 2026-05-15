@@ -1,6 +1,10 @@
 ﻿// Clash Smart 内核覆写脚本 - SUB-STORE 多机场精细分流版
-// 版本：v5.2.7 (2026-05-15)
-// 架构：SUB-STORE 多机场融合 + 11 Smart 区域组 + 17 业务策略组 + 373+ rule-providers 100%+ 服务覆盖
+// 版本：v5.2.8 (2026-05-15)
+// 架构：SUB-STORE 多机场融合 + 12 Smart 区域组 + 17 业务策略组 + 373+ rule-providers 100%+ 服务覆盖
+// v5.2.8 优化（2026-05-15）：
+//   ★ OPT#15：节点去重机制 — 地区组(HK/TW/JP/KR/SG/US)节点不再出现在大区组(APAC/AMERICAS/EU/AF)
+//   ★ OPT#16：新增 ❄️ 冷门节点组 — 未被任何组分配的节点归入此组
+//   ★ OPT#17：GLOBAL 组始终包含所有节点（最终 fallback）
 // v5.2.7 优化（2026-05-15）：
 //   ★ OPT#9：新增 🇸🇬 新加坡独立 Smart 组
 //   ★ OPT#10：统一 fallback 策略（HK/TW 移除 fallback，与 JP/KR/US/EU/AF 一致）
@@ -64,7 +68,7 @@
 //  版本常量
 // ================================================================
 
-const VERSION = 'v5.2.7'
+const VERSION = 'v5.2.8'
 
 // ================================================================
 //  模块 A：节点过滤（沿用 v3.1）
@@ -166,6 +170,7 @@ const SMART = {
   GLOBAL: '🌍 全球节点', HK: '🇭🇰 香港节点', TW: '🇹🇼 台湾节点',
   JP: '🇯🇵 日本节点', KR: '🇰🇷 韩国节点', SG: '🇸🇬 新加坡节点', APAC: '🌏 亚太节点', US: '🇺🇸 美国节点',
   EU: '🇪🇺 欧洲节点', AMERICAS: '🌎 美洲节点', AFRICA: '🌍 非洲节点',
+  COLD: '❄️ 冷门节点',
 }
 
 const BIZ = {
@@ -193,11 +198,10 @@ const GAME_TOLERANCE = 15
 const SMART_INTERVAL = 120      // Smart 组数据收集间隔（秒）
 const SMART_TOLERANCE = 30      // Smart 组切换容忍度（秒）
 
-// v5.2.7 OPT#13: STANDARD_PROXIES / DIRECT_FIRST_PROXIES 加入 SG
-const STANDARD_PROXIES = [SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.APAC, SMART.SG, SMART.US, SMART.EU, SMART.AMERICAS, SMART.AFRICA, 'DIRECT']
-const DIRECT_FIRST_PROXIES = ['DIRECT', SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.APAC, SMART.SG, SMART.US, SMART.EU, SMART.AMERICAS, SMART.AFRICA]
-// v5.2.7 OPT#11: SEA_PROXIES 移除 US，加入 SG
-const SEA_PROXIES = [SMART.APAC, SMART.GLOBAL, SMART.HK, SMART.SG, SMART.JP, SMART.KR, 'DIRECT']
+// v5.2.8: 节点去重 + 冷门节点组
+const STANDARD_PROXIES = [SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.SG, SMART.US, SMART.EU, SMART.APAC, SMART.AMERICAS, SMART.AFRICA, SMART.COLD, 'DIRECT']
+const DIRECT_FIRST_PROXIES = ['DIRECT', SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.SG, SMART.US, SMART.EU, SMART.APAC, SMART.AMERICAS, SMART.AFRICA, SMART.COLD]
+const SEA_PROXIES = [SMART.GLOBAL, SMART.HK, SMART.SG, SMART.JP, SMART.KR, SMART.APAC, SMART.COLD, 'DIRECT']
 
 // v5.1.2: GeoRouting 区域列表（module-level，供 providers + rules 共用）
 // ★ FIX#1: Asia_China 从 INTL 循环剥离，单独映射 CN_SITE（v5.1.1 误将中国域名/IP 路由到国外网站）
@@ -2081,21 +2085,47 @@ function main(config) {
     injectSmartFingerprint(config)
     var c = classifyAllNodes(config.proxies)
     console.log(`[${VERSION}] Classification: ALL=${c.ALL.length} HK=${c.HK.length} TW=${c.TW.length} CN=${c.CN.length} JP=${c.JP.length} KR=${c.KR.length} SG=${c.SG.length} US=${c.US.length} EU=${c.EU.length} AM=${c.AM.length} AF=${c.AF.length} APAC_OTHER=${c.APAC_OTHER.length} UNCLASSIFIED=${c.UNCLASSIFIED.length}`)
-    var apacNodes = c.HK.concat(c.TW, c.CN, c.JP, c.KR, c.SG, c.APAC_OTHER)
-    var americasNodes = c.US.concat(c.AM)
-    // v5.2.7 OPT#10: 统一 fallback 策略 — 空区域不建组，无 fallback
+
+    // ================================================================
+    //  v5.2.8: 节点去重分配
+    //  优先级：地区组(HK/TW/JP/KR/SG/US) > 大区组(EU/AM/AF/APAC) > 冷门节点(COLD)
+    //  GLOBAL 始终包含所有节点（作为最终 fallback）
+    // ================================================================
     upsertSmartGroup(config, SMART.GLOBAL, c.ALL)
+
+    // 第一优先：地区组（专属节点，不与其他组共享）
     if (c.HK.length > 0) upsertSmartGroup(config, SMART.HK, c.HK)
     if (c.TW.length > 0) upsertSmartGroup(config, SMART.TW, c.TW)
     if (c.JP.length > 0) upsertSmartGroup(config, SMART.JP, c.JP)
     if (c.KR.length > 0) upsertSmartGroup(config, SMART.KR, c.KR)
-    // v5.2.7 OPT#9: 新加坡独立 Smart 组
     if (c.SG.length > 0) upsertSmartGroup(config, SMART.SG, c.SG)
-    upsertSmartGroup(config, SMART.APAC, apacNodes.length > 0 ? apacNodes : c.ALL)
     if (c.US.length > 0) upsertSmartGroup(config, SMART.US, c.US)
-    if (c.EU.length > 0) upsertSmartGroup(config, SMART.EU, c.EU)
-    if (americasNodes.length > 0) upsertSmartGroup(config, SMART.AMERICAS, americasNodes)
-    if (c.AF.length > 0) upsertSmartGroup(config, SMART.AFRICA, c.AF)
+
+    // 收集已被地区组占用的节点名称
+    var regionalUsed = new Set()
+    ;[c.HK, c.TW, c.JP, c.KR, c.SG, c.US].forEach(function(arr) {
+      arr.forEach(function(name) { regionalUsed.add(name) })
+    })
+
+    // 第二优先：大区组（排除已被地区组占用的节点）
+    var euNodes = c.EU.filter(function(n) { return !regionalUsed.has(n) })
+    var amNodes = c.AM.filter(function(n) { return !regionalUsed.has(n) })
+    var afNodes = c.AF.filter(function(n) { return !regionalUsed.has(n) })
+    var apacNodes = c.APAC_OTHER.filter(function(n) { return !regionalUsed.has(n) })
+    // CN 节点归入 CN_SITE 业务组，不归入亚太 Smart 组
+
+    if (euNodes.length > 0) upsertSmartGroup(config, SMART.EU, euNodes)
+    if (amNodes.length > 0) upsertSmartGroup(config, SMART.AMERICAS, amNodes)
+    if (afNodes.length > 0) upsertSmartGroup(config, SMART.AFRICA, afNodes)
+    if (apacNodes.length > 0) upsertSmartGroup(config, SMART.APAC, apacNodes)
+
+    // 第三优先：冷门节点（排除地区组 + 大区组后剩余的节点）
+    var regionalsAndBroader = new Set()
+    ;[c.HK, c.TW, c.JP, c.KR, c.SG, c.US, euNodes, amNodes, afNodes, apacNodes].forEach(function(arr) {
+      arr.forEach(function(name) { regionalsAndBroader.add(name) })
+    })
+    var coldNodes = c.ALL.filter(function(n) { return !regionalsAndBroader.has(n) })
+    if (coldNodes.length > 0) upsertSmartGroup(config, SMART.COLD, coldNodes)
 
     // 收集实际创建的 Smart 组名，过滤业务组的 proxy 引用
     var activeSmartNames = new Set(config['proxy-groups'].filter(function(g) { return g && g.type === 'smart' }).map(function(g) { return g.name }))
