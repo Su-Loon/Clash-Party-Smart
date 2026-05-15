@@ -4,12 +4,12 @@
 
 ## 版本信息
 
-- **当前版本**: v5.2.6
+- **当前版本**: v5.2.7
 - **更新日期**: 2026-05-15
 
 ## 功能特性
 
-- 10 个 Smart 区域节点组
+- 11 个 Smart 区域节点组
 - 20 个业务策略组
 - 373+ rule-providers 服务覆盖
 - SUB-STORE 多机场融合支持
@@ -30,6 +30,7 @@
 | 🇯🇵 日本节点 | 日本节点 | JP → KR → JPKR → APAC → GLOBAL → DIRECT |
 | 🇰🇷 韩国节点 | 韩国节点 | KR → JP → JPKR → APAC → GLOBAL → DIRECT |
 | 🌏 亚太节点 | 亚太地区节点 | APAC → GLOBAL → DIRECT |
+| 🇸🇬 新加坡节点 | 新加坡节点 | 仅新加坡节点（无 fallback） |
 | 🇺🇸 美国节点 | 美国节点 | 仅美国节点（无 fallback） |
 | 🇪🇺 欧洲节点 | 欧洲节点 | EU → GLOBAL → DIRECT |
 | 🌎 美洲节点 | 美洲节点 | AMERICAS → GLOBAL → DIRECT |
@@ -105,6 +106,8 @@
 | 新加坡 | 新加坡, singapore, sin |
 | 美国 | 美国, usa, los angeles, new york, lax, sfo, jfk |
 | 欧洲 | 英国, 法国, 德国, london, paris, frankfurt |
+| 亚太 | 亚太, apac, iplc, iepl, cn2, gia |
+| 美洲 | 美洲, americas, 加拿大, 墨西哥, canada, mexico |
 
 ## 规则优先级
 
@@ -117,6 +120,14 @@
 7. 默认兜底 → FINAL
 
 ## 更新日志
+
+### v5.2.7 (2026-05-15)
+- 新增 🇸🇬 新加坡独立 Smart 区域组
+- 统一 fallback 策略：HK/TW 移除 fallback，与 JP/KR/US/EU/AF 一致
+- 修正 SEA_PROXIES：移除 US 节点，加入 SG 节点
+- Smart 组参数常量化（SMART_INTERVAL / SMART_TOLERANCE）
+- STANDARD_PROXIES / DIRECT_FIRST_PROXIES 加入 SG
+- 移除死代码 jpkrNodes 变量
 
 ### v5.2.6 (2026-05-15)
 - 修复 US 分组误匹配问题（移除歧义关键词：圣地亚哥、san、sea）

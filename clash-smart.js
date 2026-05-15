@@ -1,6 +1,13 @@
 ﻿// Clash Smart 内核覆写脚本 - SUB-STORE 多机场精细分流版
-// 版本：v5.2.6 (2026-05-15)
-// 架构：SUB-STORE 多机场融合 + 10 Smart 区域组 + 17 业务策略组 + 373+ rule-providers 100%+ 服务覆盖
+// 版本：v5.2.7 (2026-05-15)
+// 架构：SUB-STORE 多机场融合 + 11 Smart 区域组 + 17 业务策略组 + 373+ rule-providers 100%+ 服务覆盖
+// v5.2.7 优化（2026-05-15）：
+//   ★ OPT#9：新增 🇸🇬 新加坡独立 Smart 组
+//   ★ OPT#10：统一 fallback 策略（HK/TW 移除 fallback，与 JP/KR/US/EU/AF 一致）
+//   ★ OPT#11：修正 SEA_PROXIES（移除 US，加入 SG）
+//   ★ OPT#12：Smart 组参数常量化（SMART_INTERVAL / SMART_TOLERANCE）
+//   ★ OPT#13：STANDARD_PROXIES / DIRECT_FIRST_PROXIES 加入 SG
+//   ★ OPT#14：移除死代码 jpkrNodes 变量
 // v5.2.6 修复（2026-05-15）：
 //   ★ FIX#21-P1：US 分组误匹配修复
 //     - 移除歧义关键词：圣地亚哥（智利同名城市）、san（多国匹配）、sea（东南亚冲突）
@@ -57,7 +64,7 @@
 //  版本常量
 // ================================================================
 
-const VERSION = 'v5.2.6'
+const VERSION = 'v5.2.7'
 
 // ================================================================
 //  模块 A：节点过滤（沿用 v3.1）
@@ -157,7 +164,7 @@ function classifyAllNodes(proxies) {
 
 const SMART = {
   GLOBAL: '🌍 全球节点', HK: '🇭🇰 香港节点', TW: '🇹🇼 台湾节点',
-  JP: '🇯🇵 日本节点', KR: '🇰🇷 韩国节点', APAC: '🌏 亚太节点', US: '🇺🇸 美国节点',
+  JP: '🇯🇵 日本节点', KR: '🇰🇷 韩国节点', SG: '🇸🇬 新加坡节点', APAC: '🌏 亚太节点', US: '🇺🇸 美国节点',
   EU: '🇪🇺 欧洲节点', AMERICAS: '🌎 美洲节点', AFRICA: '🌍 非洲节点',
 }
 
@@ -182,9 +189,15 @@ const DISABLED_BIZ_GROUPS = new Set([
 // v5.2.5: 游戏组切换容忍度，降低值可更快切换到更优节点
 const GAME_TOLERANCE = 15
 
-const STANDARD_PROXIES = [SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.APAC, SMART.US, SMART.EU, SMART.AMERICAS, SMART.AFRICA, 'DIRECT']
-const DIRECT_FIRST_PROXIES = ['DIRECT', SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.APAC, SMART.US, SMART.EU, SMART.AMERICAS, SMART.AFRICA]
-const SEA_PROXIES = [SMART.APAC, SMART.GLOBAL, SMART.HK, SMART.JP, SMART.KR, SMART.US, 'DIRECT']
+// v5.2.7: Smart 组参数常量化
+const SMART_INTERVAL = 120      // Smart 组数据收集间隔（秒）
+const SMART_TOLERANCE = 30      // Smart 组切换容忍度（秒）
+
+// v5.2.7 OPT#13: STANDARD_PROXIES / DIRECT_FIRST_PROXIES 加入 SG
+const STANDARD_PROXIES = [SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.APAC, SMART.SG, SMART.US, SMART.EU, SMART.AMERICAS, SMART.AFRICA, 'DIRECT']
+const DIRECT_FIRST_PROXIES = ['DIRECT', SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.APAC, SMART.SG, SMART.US, SMART.EU, SMART.AMERICAS, SMART.AFRICA]
+// v5.2.7 OPT#11: SEA_PROXIES 移除 US，加入 SG
+const SEA_PROXIES = [SMART.APAC, SMART.GLOBAL, SMART.HK, SMART.SG, SMART.JP, SMART.KR, 'DIRECT']
 
 // v5.1.2: GeoRouting 区域列表（module-level，供 providers + rules 共用）
 // ★ FIX#1: Asia_China 从 INTL 循环剥离，单独映射 CN_SITE（v5.1.1 误将中国域名/IP 路由到国外网站）
@@ -203,7 +216,7 @@ const GEO_REGIONS_INTL = GEO_REGIONS_ALL.filter(r => r !== 'Asia_China')
 // ================================================================
 
 function upsertSmartGroup(config, name, proxies) {
-  var group = { name: name, type: 'smart', uselightgbm: true, collectdata: false, strategy: 'sticky-sessions', interval: 120, tolerance: 30, proxies: proxies.slice() }
+  var group = { name: name, type: 'smart', uselightgbm: true, collectdata: false, strategy: 'sticky-sessions', interval: SMART_INTERVAL, tolerance: SMART_TOLERANCE, proxies: proxies.slice() }
   var idx = config['proxy-groups'].findIndex(function(g) { return g && g.name === name })
   if (idx !== -1) { config['proxy-groups'][idx] = group } else { config['proxy-groups'].push(group) }
   console.log(`[${VERSION}] Smart: "${name}" -> ${proxies.length} nodes`)
@@ -2068,18 +2081,18 @@ function main(config) {
     injectSmartFingerprint(config)
     var c = classifyAllNodes(config.proxies)
     console.log(`[${VERSION}] Classification: ALL=${c.ALL.length} HK=${c.HK.length} TW=${c.TW.length} CN=${c.CN.length} JP=${c.JP.length} KR=${c.KR.length} SG=${c.SG.length} US=${c.US.length} EU=${c.EU.length} AM=${c.AM.length} AF=${c.AF.length} APAC_OTHER=${c.APAC_OTHER.length} UNCLASSIFIED=${c.UNCLASSIFIED.length}`)
-    var jpkrNodes = c.JP.concat(c.KR)
     var apacNodes = c.HK.concat(c.TW, c.CN, c.JP, c.KR, c.SG, c.APAC_OTHER)
     var americasNodes = c.US.concat(c.AM)
+    // v5.2.7 OPT#10: 统一 fallback 策略 — 空区域不建组，无 fallback
     upsertSmartGroup(config, SMART.GLOBAL, c.ALL)
-    upsertSmartGroup(config, SMART.HK, c.HK.length > 0 ? c.HK : apacNodes.length > 0 ? apacNodes : c.ALL)
-    upsertSmartGroup(config, SMART.TW, c.TW.length > 0 ? c.TW : apacNodes.length > 0 ? apacNodes : c.ALL)
+    if (c.HK.length > 0) upsertSmartGroup(config, SMART.HK, c.HK)
+    if (c.TW.length > 0) upsertSmartGroup(config, SMART.TW, c.TW)
     if (c.JP.length > 0) upsertSmartGroup(config, SMART.JP, c.JP)
     if (c.KR.length > 0) upsertSmartGroup(config, SMART.KR, c.KR)
+    // v5.2.7 OPT#9: 新加坡独立 Smart 组
+    if (c.SG.length > 0) upsertSmartGroup(config, SMART.SG, c.SG)
     upsertSmartGroup(config, SMART.APAC, apacNodes.length > 0 ? apacNodes : c.ALL)
-    // v5.2.6: US 组无 fallback，没有美国节点则空组（避免其他地区节点误入）
     if (c.US.length > 0) upsertSmartGroup(config, SMART.US, c.US)
-    // v5.2.1: 空区域不建组，避免 fallback 到 c.ALL 导致全节点塞入
     if (c.EU.length > 0) upsertSmartGroup(config, SMART.EU, c.EU)
     if (americasNodes.length > 0) upsertSmartGroup(config, SMART.AMERICAS, americasNodes)
     if (c.AF.length > 0) upsertSmartGroup(config, SMART.AFRICA, c.AF)
