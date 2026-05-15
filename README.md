@@ -4,15 +4,19 @@
 
 ## 版本信息
 
-- **当前版本**: v5.2.4
-- **更新日期**: 2026-05-10
+- **当前版本**: v5.2.5
+- **更新日期**: 2026-05-15
 
 ## 功能特性
 
 - 10 个 Smart 区域节点组
-- 18 个业务策略组
+- 20 个业务策略组
 - 373+ rule-providers 服务覆盖
 - SUB-STORE 多机场融合支持
+- 优化的 Provider 刷新策略（模运算回绕）
+- 随机 CDN 选择（避免单 CDN 故障）
+- 游戏组快速切换（GAME_TOLERANCE）
+- JSON 统计输出
 
 ## 代理组
 
@@ -64,7 +68,7 @@
 
 ### 流媒体服务
 - **美国**: Netflix, YouTube, Disney+, HBO, Amazon Prime, Hulu, Spotify 等
-- **日本**: AbemaTV, DMM, niconico, TVER, FOD,  Radiko 等
+- **日本**: AbemaTV, DMM, niconico, TVER, FOD, Radiko 等
 - **韩国**: wavve, tving, Watcha, Naver TV, Coupang Play 等
 - **欧洲**: BBC iPlayer, RTL+, ARD/ZDF Mediathek 等
 - **东南亚**: Viu, WeTV, iQIYI Intl 等
@@ -104,16 +108,25 @@
 
 ## 规则优先级
 
-1. 广告/追踪拦截 → REJECT
-2. 安全威胁拦截 → REJECT
-3. 私有 IP 直连 → DIRECT
-4. 国内网站直连 → DIRECT
-5. 国内流媒体直连 → DIRECT
-6. 业务规则分流 → 对应代理组
-7. GEOIP 区域路由 → 对应代理组
-8. 默认兜底 → FINAL
+1. 安全威胁拦截 → REJECT
+2. 私有 IP 直连 → DIRECT
+3. 国内网站直连 → DIRECT
+4. 国内流媒体直连 → DIRECT
+5. 业务规则分流 → 对应代理组
+6. GEOIP 区域路由 → 对应代理组
+7. 默认兜底 → FINAL
 
 ## 更新日志
+
+### v5.2.5 (2026-05-15)
+- 常量具名化（RP_BASE/RP_STEP → PROVIDER_BASE_INTERVAL_SEC/PROVIDER_STEP_SEC）
+- nextInterval 模运算回绕（避免间隔无限增长）
+- JP/KR 冗余三元判断简化
+- bm7 CDN 奇偶轮替→随机选择（避免单 CDN 故障时一半 provider 全挂）
+- 游戏组新增 GAME_TOLERANCE 常量（tolerance: 15，更快切换到更优节点）
+- Done! 日志增加 JSON 统计输出
+- 变量命名统一（_rpIdx/_bm7Idx → _rpIntervalIdx/_bm7CdnIdx）
+- 移除 anti-ad 广告拦截规则（由系统或第三方工具管理）
 
 ### v5.2.4 (2026-05-10)
 - 启用所有业务组
@@ -137,8 +150,7 @@
 
 1. 节点名称需要包含正确的地区关键词才能被正确分类
 2. 部分规则源可能需要网络访问以下载规则文件
-3. 广告拦截规则已改为 DIRECT 直连，不影响正常使用
-4. 中国大陆 AI 服务默认直连，国际 AI 服务走代理
+3. 中国大陆 AI 服务默认直连，国际 AI 服务走代理
 
 ## 许可证
 
