@@ -1,6 +1,10 @@
 ﻿// Clash Smart 内核覆写脚本 - SUB-STORE 多机场精细分流版
-// 版本：v5.2.8 (2026-05-15)
-// 架构：SUB-STORE 多机场融合 + 12 Smart 区域组 + 17 业务策略组 + 373+ rule-providers 100%+ 服务覆盖
+// 版本：v5.2.9 (2026-06-08)
+// 架构：SUB-STORE 多机场融合 + 12 Smart 区域组 + 20 业务策略组 + 373+ rule-providers 100%+ 服务覆盖
+// v5.2.9 优化（2026-06-08）：
+//   ★ FIX#22-P0：业务组代理模板改为单次运行内生成，避免 SUB-STORE 复用 JS 环境时跨订阅污染
+//   ★ FIX#23-P1：所有业务组代理引用统一过滤，避免引用未创建的 Smart 组
+//   ★ OPT#18：新增配置一致性校验日志，提示缺失代理引用、缺失 rule-provider 和未使用 provider
 // v5.2.8 优化（2026-05-15）：
 //   ★ OPT#15：节点去重机制 — 地区组(HK/TW/JP/KR/SG/US)节点不再出现在大区组(APAC/AMERICAS/EU/AF)
 //   ★ OPT#16：新增 ❄️ 冷门节点组 — 未被任何组分配的节点归入此组
@@ -68,7 +72,7 @@
 //  版本常量
 // ================================================================
 
-const VERSION = 'v5.2.8'
+const VERSION = 'v5.2.9'
 
 // ================================================================
 //  模块 A：节点过滤（沿用 v3.1）
@@ -198,10 +202,10 @@ const GAME_TOLERANCE = 15
 const SMART_INTERVAL = 120      // Smart 组数据收集间隔（秒）
 const SMART_TOLERANCE = 30      // Smart 组切换容忍度（秒）
 
-// v5.2.8: 节点去重 + 冷门节点组
-const STANDARD_PROXIES = [SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.SG, SMART.US, SMART.EU, SMART.APAC, SMART.AMERICAS, SMART.AFRICA, SMART.COLD, 'DIRECT']
-const DIRECT_FIRST_PROXIES = ['DIRECT', SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.SG, SMART.US, SMART.EU, SMART.APAC, SMART.AMERICAS, SMART.AFRICA, SMART.COLD]
-const SEA_PROXIES = [SMART.GLOBAL, SMART.HK, SMART.SG, SMART.JP, SMART.KR, SMART.APAC, SMART.COLD, 'DIRECT']
+// v5.2.9: 保持模板不可变，每次 main() 基于实际创建的 Smart 组生成可用代理列表
+const BASE_STANDARD_PROXIES = [SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.SG, SMART.US, SMART.EU, SMART.APAC, SMART.AMERICAS, SMART.AFRICA, SMART.COLD, 'DIRECT']
+const BASE_DIRECT_FIRST_PROXIES = ['DIRECT', SMART.GLOBAL, SMART.HK, SMART.TW, SMART.JP, SMART.KR, SMART.SG, SMART.US, SMART.EU, SMART.APAC, SMART.AMERICAS, SMART.AFRICA, SMART.COLD]
+const BASE_SEA_PROXIES = [SMART.GLOBAL, SMART.HK, SMART.SG, SMART.JP, SMART.KR, SMART.APAC, SMART.COLD, 'DIRECT']
 
 // v5.1.2: GeoRouting 区域列表（module-level，供 providers + rules 共用）
 // ★ FIX#1: Asia_China 从 INTL 循环剥离，单独映射 CN_SITE（v5.1.1 误将中国域名/IP 路由到国外网站）
@@ -226,32 +230,46 @@ function upsertSmartGroup(config, name, proxies) {
   console.log(`[${VERSION}] Smart: "${name}" -> ${proxies.length} nodes`)
 }
 
+function buildProxyTemplates(activeProxyNames) {
+  function filterAvailable(arr) {
+    return arr.filter(function(proxyName) { return activeProxyNames.has(proxyName) })
+  }
+  return {
+    standard: filterAvailable(BASE_STANDARD_PROXIES),
+    directFirst: filterAvailable(BASE_DIRECT_FIRST_PROXIES),
+    sea: filterAvailable(BASE_SEA_PROXIES),
+  }
+}
+
 // ================================================================
-//  模块 F：业务策略组注入（28组）
+//  模块 F：业务策略组注入（20组）
 // ================================================================
 
-function injectBusinessGroups(config) {
+function injectBusinessGroups(config, proxyTemplates) {
+  var standardProxies = proxyTemplates.standard
+  var directFirstProxies = proxyTemplates.directFirst
+  var seaProxies = proxyTemplates.sea
   var groups = [
-    { name: BIZ.AI, type: 'select', proxies: STANDARD_PROXIES.slice() },
-    { name: BIZ.CN_AI, type: 'select', proxies: DIRECT_FIRST_PROXIES.slice() },
-    { name: BIZ.EMAIL, type: 'select', proxies: STANDARD_PROXIES.slice() },
-    { name: BIZ.IM, type: 'select', proxies: STANDARD_PROXIES.slice() },
-    { name: BIZ.SOCIAL, type: 'select', proxies: STANDARD_PROXIES.slice() },
-    { name: BIZ.CNMEDIA, type: 'select', proxies: DIRECT_FIRST_PROXIES.slice() },
-    { name: BIZ.STREAM_SEA, type: 'select', proxies: SEA_PROXIES.slice() },
-    { name: BIZ.STREAM_US, type: 'select', proxies: STANDARD_PROXIES.slice() },
-    { name: BIZ.STREAM_HK, type: 'select', proxies: STANDARD_PROXIES.slice() },
-    { name: BIZ.STREAM_TW, type: 'select', proxies: STANDARD_PROXIES.slice() },
-    { name: BIZ.STREAM_JP, type: 'select', proxies: STANDARD_PROXIES.slice() },
-    { name: BIZ.STREAM_KR, type: 'select', proxies: STANDARD_PROXIES.slice() },
-    { name: BIZ.STREAM_EU, type: 'select', proxies: STANDARD_PROXIES.slice() },
-    { name: BIZ.GAME_CN, type: 'select', proxies: DIRECT_FIRST_PROXIES.slice(), tolerance: GAME_TOLERANCE },
-    { name: BIZ.GAME_INTL, type: 'select', proxies: STANDARD_PROXIES.slice(), tolerance: GAME_TOLERANCE },
-    { name: BIZ.CLOUD_CDN, type: 'select', proxies: STANDARD_PROXIES.slice() },
-    { name: BIZ.CN_SITE, type: 'select', proxies: DIRECT_FIRST_PROXIES.slice() },
-    { name: BIZ.GFW, type: 'select', proxies: STANDARD_PROXIES.slice() },
-    { name: BIZ.INTL_SITE, type: 'select', proxies: STANDARD_PROXIES.slice() },
-    { name: BIZ.FINAL, type: 'select', proxies: STANDARD_PROXIES.slice() },
+    { name: BIZ.AI, type: 'select', proxies: standardProxies.slice() },
+    { name: BIZ.CN_AI, type: 'select', proxies: directFirstProxies.slice() },
+    { name: BIZ.EMAIL, type: 'select', proxies: standardProxies.slice() },
+    { name: BIZ.IM, type: 'select', proxies: standardProxies.slice() },
+    { name: BIZ.SOCIAL, type: 'select', proxies: standardProxies.slice() },
+    { name: BIZ.CNMEDIA, type: 'select', proxies: directFirstProxies.slice() },
+    { name: BIZ.STREAM_SEA, type: 'select', proxies: seaProxies.slice() },
+    { name: BIZ.STREAM_US, type: 'select', proxies: standardProxies.slice() },
+    { name: BIZ.STREAM_HK, type: 'select', proxies: standardProxies.slice() },
+    { name: BIZ.STREAM_TW, type: 'select', proxies: standardProxies.slice() },
+    { name: BIZ.STREAM_JP, type: 'select', proxies: standardProxies.slice() },
+    { name: BIZ.STREAM_KR, type: 'select', proxies: standardProxies.slice() },
+    { name: BIZ.STREAM_EU, type: 'select', proxies: standardProxies.slice() },
+    { name: BIZ.GAME_CN, type: 'select', proxies: directFirstProxies.slice(), tolerance: GAME_TOLERANCE },
+    { name: BIZ.GAME_INTL, type: 'select', proxies: standardProxies.slice(), tolerance: GAME_TOLERANCE },
+    { name: BIZ.CLOUD_CDN, type: 'select', proxies: standardProxies.slice() },
+    { name: BIZ.CN_SITE, type: 'select', proxies: directFirstProxies.slice() },
+    { name: BIZ.GFW, type: 'select', proxies: standardProxies.slice() },
+    { name: BIZ.INTL_SITE, type: 'select', proxies: standardProxies.slice() },
+    { name: BIZ.FINAL, type: 'select', proxies: standardProxies.slice() },
   ]
   groups = groups.filter(function(group) { return !DISABLED_BIZ_GROUPS.has(group.name) })
   var firstSmartIdx = config['proxy-groups'].findIndex(function(g) { return g && g.type === 'smart' })
@@ -2069,6 +2087,77 @@ function sortProxyGroups(config) {
   config['proxy-groups'] = [...bizGroups, ...otherGroups, ...smartGroups]
 }
 
+function addUniqueSample(list, value) {
+  if (list.length >= 10) return
+  if (list.indexOf(value) === -1) list.push(value)
+}
+
+function validateGeneratedConfig(config) {
+  var validProxyNames = new Set(['DIRECT', 'REJECT'])
+  ;(config.proxies || []).forEach(function(proxy) {
+    if (proxy && proxy.name) validProxyNames.add(proxy.name)
+  })
+  ;(config['proxy-groups'] || []).forEach(function(group) {
+    if (group && group.name) validProxyNames.add(group.name)
+  })
+
+  var missingProxyRefs = []
+  var missingProxyRefCount = 0
+  ;(config['proxy-groups'] || []).forEach(function(group) {
+    if (!group || !Array.isArray(group.proxies)) return
+    group.proxies.forEach(function(proxyName) {
+      if (!validProxyNames.has(proxyName)) {
+        missingProxyRefCount++
+        addUniqueSample(missingProxyRefs, group.name + ' -> ' + proxyName)
+      }
+    })
+  })
+
+  var missingRuleTargets = []
+  var missingRuleTargetCount = 0
+  ;(config.rules || []).forEach(function(rule) {
+    var target = getRuleTarget(rule)
+    if (target && !validProxyNames.has(target)) {
+      missingRuleTargetCount++
+      addUniqueSample(missingRuleTargets, rule)
+    }
+  })
+
+  var providerNames = new Set(Object.keys(config['rule-providers'] || {}))
+  var usedProviders = new Set()
+  var missingProviders = []
+  var missingProviderCount = 0
+  ;(config.rules || []).forEach(function(rule) {
+    if (typeof rule !== 'string') return
+    var parts = rule.split(',')
+    if (parts[0] !== 'RULE-SET' || !parts[1]) return
+    usedProviders.add(parts[1])
+    if (!providerNames.has(parts[1])) {
+      missingProviderCount++
+      addUniqueSample(missingProviders, parts[1])
+    }
+  })
+  var unusedProviders = []
+  var unusedProviderCount = 0
+  providerNames.forEach(function(providerName) {
+    if (!usedProviders.has(providerName)) {
+      unusedProviderCount++
+      addUniqueSample(unusedProviders, providerName)
+    }
+  })
+
+  var warningCount = missingProxyRefCount + missingRuleTargetCount + missingProviderCount + unusedProviderCount
+  if (warningCount === 0) {
+    console.log(`[${VERSION}] Validate: OK (proxy refs, rule targets, providers)`)
+    return
+  }
+  console.log(`[${VERSION}] Validate: WARN missingProxyRefs=${missingProxyRefCount} missingRuleTargets=${missingRuleTargetCount} missingProviders=${missingProviderCount} unusedProviders=${unusedProviderCount}`)
+  if (missingProxyRefs.length > 0) console.log(`[${VERSION}] Validate missing proxy refs: ${missingProxyRefs.join(' | ')}`)
+  if (missingRuleTargets.length > 0) console.log(`[${VERSION}] Validate missing rule targets: ${missingRuleTargets.join(' | ')}`)
+  if (missingProviders.length > 0) console.log(`[${VERSION}] Validate missing providers: ${missingProviders.join(', ')}`)
+  if (unusedProviders.length > 0) console.log(`[${VERSION}] Validate unused providers: ${unusedProviders.join(', ')}`)
+}
+
 // ================================================================
 //  主函数
 // ================================================================
@@ -2130,16 +2219,15 @@ function main(config) {
     // 收集实际创建的 Smart 组名，过滤业务组的 proxy 引用
     var activeSmartNames = new Set(config['proxy-groups'].filter(function(g) { return g && g.type === 'smart' }).map(function(g) { return g.name }))
     activeSmartNames.add('DIRECT'); activeSmartNames.add('REJECT')
-    function filterProxies(arr) { return arr.filter(function(p) { return activeSmartNames.has(p) }) }
-    STANDARD_PROXIES.splice(0, STANDARD_PROXIES.length, ...filterProxies(STANDARD_PROXIES))
-    DIRECT_FIRST_PROXIES.splice(0, DIRECT_FIRST_PROXIES.length, ...filterProxies(DIRECT_FIRST_PROXIES))
+    var proxyTemplates = buildProxyTemplates(activeSmartNames)
     console.log(`[${VERSION}] Active Smart groups: ${[...activeSmartNames].filter(function(n) { return n !== 'DIRECT' && n !== 'REJECT' }).join(', ')}`)
 
-    injectBusinessGroups(config)
+    injectBusinessGroups(config, proxyTemplates)
     injectRuleProviders(config)
     injectRules(config)
     pruneDisabledBusinessConfig(config)
     sortProxyGroups(config)
+    validateGeneratedConfig(config)
     console.log(`[${VERSION}] Done! Groups: ${config['proxy-groups'].length}, Rules: ${config.rules.length}, Providers: ${Object.keys(config['rule-providers']).length}`)
     console.log(JSON.stringify({ version: VERSION, groups: config['proxy-groups'].length, rules: config.rules.length, providers: Object.keys(config['rule-providers']).length, nodeCounts: { ALL: c.ALL.length, HK: c.HK.length, TW: c.TW.length, CN: c.CN.length, JP: c.JP.length, KR: c.KR.length, SG: c.SG.length, US: c.US.length, EU: c.EU.length, AM: c.AM.length, AF: c.AF.length, APAC_OTHER: c.APAC_OTHER.length, UNCLASSIFIED: c.UNCLASSIFIED.length } }))
     return config
